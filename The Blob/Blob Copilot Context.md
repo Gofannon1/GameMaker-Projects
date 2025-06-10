@@ -1,6 +1,6 @@
 # The Blob - GameMaker Studio 2 Platformer Project Documentation
 
-*Last Updated: June 10, 2025*
+*Last Updated: June 10, 2025 - Project 2 Complete with Crouch System Fixed + Platforms Added*
 
 ## Project Overview
 
@@ -383,3 +383,202 @@ The essential platformer mechanics have been successfully implemented and tested
 4. **Then: Advanced Features** - Special blob abilities and level progression
 
 *This documentation serves as a complete reference for "The Blob" platformer foundation and provides context for future development following established patterns from "The Wizard" series.*
+
+---
+
+## Project 2: Double Jump & Crouch System
+
+**Purpose**: Add double jump mechanics and crouch functionality to the base platformer
+**Status**: ✅ Complete and Working
+
+### Key Features
+- ✅ Double jump system (ground jump + air jump at 80% power)
+- ✅ Crouch functionality with proper collision detection using "feet position tracking"
+- ✅ **Platform system with drop-through functionality**
+- ✅ Sprite switching between standing and crouching
+- ✅ Movement speed reduction while crouching (50%)
+- ✅ Jump prevention while crouching
+- ✅ Auto-cancel crouch when airborne
+- ✅ Smart collision checking to prevent getting stuck under low ceilings
+
+### Variables Added (Create_0.gml)
+```gml
+// Double jump system
+jumps_done = 0;
+max_jumps = 2; // Allow double jump
+can_double_jump = false;
+
+// Crouch system
+is_crouching = false;
+stand_sprite = spr_player;
+crouch_sprite = spr_player_crouch;
+
+// Platform system
+can_pass_through = true;
+drop_cooldown = 0;
+drop_delay = 15;
+
+// Layer references
+ground_layer = layer_tilemap_get_id("Ground");
+platform_layer = layer_tilemap_get_id("Platforms");
+```
+
+### Controls
+- **A** - Move left
+- **D** - Move right  
+- **W** - Jump (ground jump + double jump in air)
+- **S** - Crouch (only when on ground)
+- **M** - Drop through platforms (when standing on one)
+
+### Crouch System Logic - "Feet Position Tracking" Method
+```gml
+// Crouching logic
+if (crouch_key && is_on_ground) {
+    if (!is_crouching) {
+        // Store feet position before changing sprite
+        var feet_position = y + sprite_height/2;
+        
+        is_crouching = true;
+        sprite_index = crouch_sprite;
+        
+        // Adjust position so feet stay at same level
+        y = feet_position - sprite_height/2;
+    }
+    h_speed = h_speed * 0.5; // Slower movement while crouching
+}
+
+// Standing up logic
+else if (is_crouching) {
+    // Check if there's room to stand up
+    var normal_height = sprite_get_height(stand_sprite);
+    var feet_position = y + sprite_height/2;
+    
+    if (!place_meeting(x, feet_position - normal_height, ground_layer)) {
+        is_crouching = false;
+        sprite_index = stand_sprite;
+        
+        // Adjust position so feet stay at same level
+        y = feet_position - normal_height/2;
+    }
+}
+```
+
+### Platform System Logic - "Drop-Through Platforms"
+```gml
+// Platform drop-through system
+if (drop_key && is_on_ground && place_meeting(x, y + 1, platform_layer)) {
+    can_pass_through = false;
+    drop_cooldown = drop_delay;
+    v_speed = 1; // Small downward velocity to pass through
+    is_on_ground = false;
+}
+
+// Platform drop cooldown management
+if (drop_cooldown > 0) {
+    drop_cooldown--;
+    if (drop_cooldown <= 0) {
+        can_pass_through = true;
+    }
+}
+
+// Platform collision (only when falling down and can pass through)
+if (v_speed > 0 && can_pass_through && !place_meeting(x, y, platform_layer)) {
+    if (place_meeting(x, y + v_speed, platform_layer)) {
+        while (!place_meeting(x, y + 1, platform_layer)) {
+            y += 1;
+        }
+        
+        is_on_ground = true;
+        jumps_done = 0; // Reset jump counter when landing on platform
+        v_speed = 0;
+    }
+}
+```
+
+### Double Jump System Logic
+1. **Ground Jump**: W key + on ground → full jump height + enable double jump
+2. **Air Jump**: W key + in air + double jump available → 80% jump height
+3. **Reset**: Double jump resets when landing on ground
+
+### Platform System Logic
+1. **Landing on Platforms**: Can land on platforms from above when falling
+2. **Jump Through**: Can jump up through platforms from below
+3. **Drop Through**: M key + standing on platform → temporarily disable platform collision
+4. **Cooldown System**: 15-frame cooldown prevents immediate re-landing after dropping
+5. **Pass-Through State**: `can_pass_through` controls when platforms are solid vs passable
+
+### Sprite Management
+- `spr_player` (48x48px) - Standing/moving sprite
+- `spr_player_crouch` (48x24px) - Crouching sprite
+- Auto-flipping based on facing direction
+
+### Crouch System Debugging History
+
+#### Initial Issues Found and Fixed:
+1. **Height Calculation Bug** ✅ FIXED
+   - **Problem**: Height difference calculated inside standing-up check
+   - **Solution**: Pre-calculated in CREATE event
+
+2. **Position Adjustment Bug** ✅ FIXED  
+   - **Problem**: Player moved down when crouching, causing ground sinking
+   - **Solution**: Implemented "feet position tracking" from Platformer Example
+
+3. **Ground Sinking Issue** ✅ FIXED
+   - **Root Cause**: Wrong position adjustment logic pushed player into ground
+   - **Solution**: Used feet position tracking instead of simple offset adjustment
+
+#### Final Implementation Benefits:
+- ✅ Feet always stay on the ground
+- ✅ No sinking into ground
+- ✅ No floating above ground  
+- ✅ Smooth transitions between sprites
+- ✅ Collision detection works properly
+
+#### Test Cases Verified:
+- ✅ Crouch on flat ground
+- ✅ Stand up on flat ground  
+- ✅ Try to stand under low ceiling (stays crouched)
+- ✅ Jump while crouching (prevented)
+- ✅ Auto-cancel crouch when airborne
+- ✅ Slower movement while crouched
+- ✅ Proper sprite switching
+
+### Platform System Test Cases:
+- ✅ Walk on platforms normally (solid collision from above)
+- ✅ Jump up through platforms from below (passable)
+- ✅ Drop through platforms with M key
+- ✅ Land on platforms from above (triggers grounded state)
+- ✅ Double jump works from platforms
+- ✅ Crouch works on platforms
+- ✅ Cooldown prevents getting stuck in platform
+
+### Platform System Implementation Details
+
+The drop-through platform system successfully provides full platformer functionality:
+
+#### **Core Platform Features:**
+1. **Landing on Platforms** - Player can land on platforms from above when falling, platforms act as solid ground
+2. **Jump Through from Below** - Player can jump up through platforms from underneath with no collision interference
+3. **Drop Through Mechanism** - M Key while standing on platform drops through with 15-frame cooldown
+4. **Smart Collision Logic** - Only collides when falling down, can pass through, and not currently inside platform
+5. **Integration** - Works seamlessly with double jump, crouch, and all existing systems
+
+#### **Technical Implementation:**
+- **Variables**: `can_pass_through`, `drop_cooldown`, `drop_delay`, `platform_layer`
+- **Controls**: M key for drop-through functionality
+- **Cooldown System**: 15-frame prevention of immediate re-landing
+- **State Management**: Temporary disabling of platform collision during drop-through
+- **Collision Logic**: Conditional platform collision based on movement direction and state
+
+---
+
+## Project 2 Complete: Enhanced Platformer System ✅
+
+**Final Status**: All systems working together seamlessly
+- **Base Movement**: A/D movement, gravity, collision
+- **Jumping**: Ground jump + double jump with 80% power  
+- **Crouching**: S key with feet position tracking, no ground sinking
+- **Platforms**: Jump through from below, land from above, M key drop-through
+- **Integration**: All systems work together without conflicts
+
+**Next Steps**: Ready for Project 3 - Attack System or other advanced features
