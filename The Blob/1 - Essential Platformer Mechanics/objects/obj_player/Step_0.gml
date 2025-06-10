@@ -42,7 +42,6 @@ if (place_meeting(x, y + v_speed, ground_layer)) {
     if (v_speed > 0) {
         is_on_ground = true;
     }
-    
     v_speed = 0;
 } else {
     is_on_ground = false;
