@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GameFace Real-Time Bridge</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+</head>
+<body>
+    <h2>GameFace: Live AI Input</h2>
+    <button onclick="init()">Start</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+
+    <script type="text/javascript">
+        const URL = "https://teachablemachine.withgoogle.com/models/-GxABS3VX/";
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true;
+            webcam = new tmImage.Webcam(200, 200, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            const best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
+
+            // Display result
+            labelContainer.childNodes[0].innerHTML = `${best.className} (${(best.probability * 100).toFixed(2)})`;
+
+            // Send result to Node.js server
+            fetch("http://localhost:8000/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    prediction: {
+                        label: best.className,
+                        confidence: best.probability
+                    }
+                })
+            }).catch(err => console.error("Error sending data:", err));
+        }
+    </script>
+</body>
+</html>
