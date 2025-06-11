@@ -18,3 +18,7 @@ hurt_duration = 30; // frames
 // Jump buffer
 jump_buffer = 0;
 jump_buffer_time = 8;
+
+// Walking dust particle system
+walk_dust_timer = 0;
+walk_dust_interval = 8; // frames between walking dust particles

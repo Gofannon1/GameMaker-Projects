@@ -124,9 +124,35 @@ if (is_hurt) {
     if (abs(hspeed) > 0.1) {
         sprite_index = spr_player_walk;
         image_speed = abs(hspeed) / move_speed; // Animation speed matches movement speed
+        
+        // Walking dust particle effect
+        walk_dust_timer++;
+        if (walk_dust_timer >= walk_dust_interval) {
+            walk_dust_timer = 0;
+            
+            // Create walking dust behind the player's feet
+            // Use the facing direction from image_xscale for reliable positioning
+            var dust_x;
+            if (image_xscale > 0) {
+                // Facing right - dust goes to the left (behind)
+                dust_x = x - 12;
+            } else {
+                // Facing left - dust goes to the right (behind) 
+                dust_x = x + 12;
+            }
+            
+            var walk_dust = instance_create_layer(dust_x, y + sprite_height/2, "Instances", obj_dust_particle);
+            walk_dust.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_walk;
+            
+            // Flip the dust particle sprite to match the movement direction
+            walk_dust.image_xscale = image_xscale; // Match the ninja's facing direction
+        }
     } else {
         sprite_index = spr_player_idle;
         image_speed = 0.3; // Slow idle breathing animation
+        
+        // Reset walking dust timer when not moving
+        walk_dust_timer = 0;
     }
 }
 

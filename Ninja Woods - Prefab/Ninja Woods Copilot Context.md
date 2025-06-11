@@ -54,10 +54,15 @@ Ninja Woods - Prefab/
 - **Collision Points**: Checks multiple points around character bounds
 
 ### ✨ Particle Effects System (obj_dust_particle)
-- **Trigger Events**: Jump and landing dust particles
-- **Sprite**: Uses `::io.gamemaker.ninjawoods-1.0.0::spr_part_character_jump`
+- **Trigger Events**: Jump, landing, and walking dust particles
+- **Jump/Landing Sprite**: Uses `::io.gamemaker.ninjawoods-1.0.0::spr_part_character_jump`
+- **Walking Sprite**: Uses `::io.gamemaker.ninjawoods-1.0.0::spr_part_character_walk`
 - **Lifecycle**: 30-frame lifetime with fade effect
-- **Positioning**: Spawns at ninja's feet with slight randomization
+- **Positioning**: 
+  - Jump/Landing: Spawns at ninja's feet with slight randomization
+  - Walking: Spawns behind ninja's feet every 8 frames while moving
+- **Direction-Aware**: Walking dust particles flip horizontally to match player facing direction
+- **Walking Effect**: Dust trails behind the player during movement for enhanced visual feedback
 
 ### 🪙 Coin Collection System (obj_coin)
 - **Animation**: Floating motion with `sin()` wave function
@@ -124,14 +129,50 @@ if (!is_hurt) {
 }
 
 // Sprite animation based on state
-if (vspeed < -2) {
+if (vspeed < -1) {
     sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_player_jump;
-} else if (vspeed > 2) {
+} else if (vspeed > 1) {
     sprite_index = spr_player_fall;
 } else if (abs(hspeed) > 0.1) {
     sprite_index = spr_player_walk;
+    // Walking dust effect with direction-aware positioning and sprite flipping
 } else {
     sprite_index = spr_player_idle;
+}
+```
+
+#### Jump/Landing Particles Implementation (obj_ninja Step_0.gml)
+```gml
+// Jump dust effect - created when jumping
+if (jump_buffer > 0 && on_ground) {
+    vspeed = jump_speed;
+    jump_buffer = 0;
+    on_ground = false;
+    
+    // Create dust particle effect at ninja's feet when jumping
+    var dust_effect = instance_create_layer(x, y + sprite_height/2, "Instances", obj_dust_particle);
+    dust_effect.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_jump;
+}
+
+// Landing dust effect - created when landing from a fall
+if (vspeed > 0) { // Falling down
+    var ground_y = y + sprite_height/2 + vspeed;
+    if (tilemap_get_at_pixel(tilemap, x, ground_y) > 0) {
+        // Store the fall speed before landing for dust effect
+        var fall_speed = vspeed;
+        
+        // Land on the tile
+        var tile_y = floor(ground_y / 32) * 32;
+        y = tile_y - sprite_height/2;
+        vspeed = 0;
+        on_ground = true;
+        
+        // Create dust particle effect when landing (if was falling fast enough)
+        if (fall_speed > 3) {
+            var land_dust = instance_create_layer(x, y + sprite_height/2, "Instances", obj_dust_particle);
+            land_dust.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_jump;
+        }
+    }
 }
 ```
 
@@ -151,6 +192,10 @@ hurt_duration = 30;   // frames of invulnerability
 // Jump buffer system
 jump_buffer = 0;
 jump_buffer_time = 8; // frames of jump buffering
+
+// Walking dust particle system
+walk_dust_timer = 0;
+walk_dust_interval = 8; // frames between walking dust particles
 ```
 
 #### Collision Detection Pattern
@@ -164,11 +209,28 @@ if (!variable_instance_exists(id, "cached_tilemap")) {
 var collision = tilemap_get_at_pixel(cached_tilemap, x, y + sprite_height/2);
 ```
 
-#### Particle System Creation
+#### Walking Dust Particle Code Example
 ```gml
-// Spawn dust particles on landing
-if (on_ground && vspeed_prev > 2) {
-    instance_create_layer(x, y + sprite_height/2, "Instances", obj_dust_particle);
+// Walking dust particle effect
+walk_dust_timer++;
+if (walk_dust_timer >= walk_dust_interval) {
+    walk_dust_timer = 0;
+    
+    // Create walking dust behind the player's feet
+    var dust_x;
+    if (image_xscale > 0) {
+        // Facing right - dust goes to the left (behind)
+        dust_x = x - 12;
+    } else {
+        // Facing left - dust goes to the right (behind) 
+        dust_x = x + 12;
+    }
+    
+    var walk_dust = instance_create_layer(dust_x, y + sprite_height/2, "Instances", obj_dust_particle);
+    walk_dust.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_walk;
+    
+    // Flip the dust particle sprite to match the movement direction
+    walk_dust.image_xscale = image_xscale; // Match the ninja's facing direction
 }
 ```
 
@@ -348,4 +410,4 @@ sprite_index = spr_player_jump; // Now using local copy
 
 ---
 *Documentation created during collaborative development with GitHub Copilot*
-*Last updated: June 11, 2025 - Updated to reflect actual implementation*
+*Last updated: June 11, 2025 - Added direction-aware walking dust particles with sprite flipping*
