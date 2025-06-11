@@ -12,14 +12,25 @@ if (!is_hurt) {
     var move_right = keyboard_check(vk_right) || keyboard_check(ord("D"));
     var jump_pressed = keyboard_check_pressed(vk_space) || keyboard_check_pressed(vk_up) || keyboard_check_pressed(ord("W"));
     
-    // Horizontal movement
+    // Horizontal movement with acceleration and deceleration
     var horizontal_input = move_right - move_left;
-    hspeed = horizontal_input * move_speed;
     
-    // Update facing direction
     if (horizontal_input != 0) {
+        // Player is trying to move - accelerate towards target speed
+        var target_speed = horizontal_input * move_speed;
+        hspeed = lerp(hspeed, target_speed, acceleration);
+        
+        // Update facing direction
         facing_right = (horizontal_input > 0);
         image_xscale = facing_right ? 1 : -1;
+    } else {
+        // No input - decelerate to a stop
+        hspeed = lerp(hspeed, 0, deceleration);
+        
+        // Stop completely if very close to zero to prevent micro-movements
+        if (abs(hspeed) < 0.1) {
+            hspeed = 0;
+        }
     }
     
     // Jump buffer
@@ -50,7 +61,7 @@ if (!is_hurt) {
         
         // Create dust particle effect at ninja's feet when jumping
         var dust_effect = instance_create_layer(x, y + sprite_height/2, "Instances", obj_dust_particle);
-        dust_effect.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_jump;
+        dust_effect.sprite_index = spr_part_character_jump;
     }
 }
 
@@ -81,7 +92,7 @@ if (vspeed > 0) { // Falling down
         // Create dust particle effect when landing (if was falling fast enough)
         if (fall_speed > 3) {
             var land_dust = instance_create_layer(x, y + sprite_height/2, "Instances", obj_dust_particle);
-            land_dust.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_jump;
+            land_dust.sprite_index = spr_part_character_jump;
         }
     }
 }
@@ -112,7 +123,7 @@ if (is_hurt) {
 } else if (!on_ground) {
     // In air - check if jumping or falling with buffer to prevent glitching
     if (vspeed < -1) { // More threshold for jump sprite
-        sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_player_jump; // Use prefab jump sprite
+        sprite_index = spr_player_fall; // Use fall sprite for jumping too
         image_speed = 0.5; // Slower jump animation
     } else if (vspeed > 1) { // More threshold for fall sprite
         sprite_index = spr_player_fall;
@@ -121,31 +132,39 @@ if (is_hurt) {
     // Keep current sprite if velocity is close to 0 (prevents glitching)
 } else {
     // On ground - check if moving or idle
-    if (abs(hspeed) > 0.1) {
+    if (abs(hspeed) > 0.5) { // Increased threshold to switch to idle sooner
         sprite_index = spr_player_walk;
-        image_speed = abs(hspeed) / move_speed; // Animation speed matches movement speed
+        // Improved animation speed calculation with minimum speed to avoid slow-motion effect
+        var speed_ratio = abs(hspeed) / move_speed; // 0.0 to 1.0
+        // Set minimum animation speed of 0.6 to prevent slow-motion look
+        image_speed = max(0.6, 0.3 + (speed_ratio * 0.9)); // 0.6 to 1.2 animation speed
         
-        // Walking dust particle effect
-        walk_dust_timer++;
-        if (walk_dust_timer >= walk_dust_interval) {
-            walk_dust_timer = 0;
-            
-            // Create walking dust behind the player's feet
-            // Use the facing direction from image_xscale for reliable positioning
-            var dust_x;
-            if (image_xscale > 0) {
-                // Facing right - dust goes to the left (behind)
-                dust_x = x - 12;
-            } else {
-                // Facing left - dust goes to the right (behind) 
-                dust_x = x + 12;
+        // Walking dust particle effect - only above certain speed
+        if (abs(hspeed) > 6) { // Only create dust when moving at half max speed or higher
+            walk_dust_timer++;
+            if (walk_dust_timer >= walk_dust_interval) {
+                walk_dust_timer = 0;
+                
+                // Create walking dust behind the player's feet
+                // Use the facing direction from image_xscale for reliable positioning
+                var dust_x;
+                if (image_xscale > 0) {
+                    // Facing right - dust goes to the left (behind)
+                    dust_x = x - 12;
+                } else {
+                    // Facing left - dust goes to the right (behind) 
+                    dust_x = x + 12;
+                }
+                
+                var walk_dust = instance_create_layer(dust_x, y + sprite_height/2, "Instances", obj_dust_particle);
+                walk_dust.sprite_index = spr_part_character_walk;
+                
+                // Flip the dust particle sprite to match the movement direction
+                walk_dust.image_xscale = image_xscale; // Match the ninja's facing direction
             }
-            
-            var walk_dust = instance_create_layer(dust_x, y + sprite_height/2, "Instances", obj_dust_particle);
-            walk_dust.sprite_index = ::io.gamemaker.ninjawoods-1.0.0::spr_part_character_walk;
-            
-            // Flip the dust particle sprite to match the movement direction
-            walk_dust.image_xscale = image_xscale; // Match the ninja's facing direction
+        } else {
+            // Reset dust timer when moving too slowly for dust
+            walk_dust_timer = 0;
         }
     } else {
         sprite_index = spr_player_idle;

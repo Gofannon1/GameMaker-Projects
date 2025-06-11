@@ -16,6 +16,13 @@ var text_y = 38; // Centered vertically with the coin sprite
 draw_set_color(c_white);
 draw_text(text_x, text_y, "x " + string(global.coins_collected)); // Main text
 
+// Speed display for testing acceleration system
+if (instance_exists(obj_ninja)) {
+    var ninja = instance_find(obj_ninja, 0);
+    draw_set_color(c_yellow);
+    draw_text(20, 80, "Speed: " + string(round(abs(ninja.hspeed) * 100) / 100));
+}
+
 // Reset draw settings
 draw_set_color(c_white);
 draw_set_halign(fa_left);

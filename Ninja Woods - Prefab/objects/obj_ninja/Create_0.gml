@@ -1,5 +1,7 @@
 // Ninja movement variables
-move_speed = 4;
+move_speed = 12; // Increased from 4 to 12 (3x faster)
+acceleration = 0.033; // Calculated for 1.5 second acceleration time (90 frames at 60 FPS)
+deceleration = 0.05; // Much more gradual deceleration to match acceleration feel
 jump_speed = -15; // Increased jump power
 gravity_force = 0.8; // Increased gravity for more responsive feel
 max_fall_speed = 10;
