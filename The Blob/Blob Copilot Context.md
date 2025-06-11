@@ -1,6 +1,6 @@
 # The Blob - GameMaker Studio 2 Platformer Project Documentation
 
-*Last Updated: June 10, 2025 - Project 2 Complete with Crouch System Fixed + Platforms Added*
+*Last Updated: June 11, 2025 - Documentation Consolidated, All Debug Files Merged*
 
 ## Project Overview
 
